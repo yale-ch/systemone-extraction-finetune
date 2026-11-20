@@ -1,0 +1,166 @@
+{
+ "zero_shot": {
+  "dev": {
+   "sources": {
+    "arabic": 89.31,
+    "latin": 89.68
+   },
+   "types": {
+    "list": 86.56,
+    "text": 91.16
+   },
+   "fields": 9000,
+   "mean": 89.5,
+   "null": {
+    "precision": 0.979,
+    "recall": 0.9431
+   },
+   "fields_score": {
+    "first_name": 74.44,
+    "last_name": 88.48,
+    "middle_names": 68.33,
+    "titles": 96.0,
+    "extra_info": 95.37,
+    "life_start": 99.1,
+    "life_end": 98.45,
+    "flourished_start": 92.6,
+    "flourished_end": 93.9
+   },
+   "field_mean": 89.63,
+   "record_exact": 25.6,
+   "rows": 1000,
+   "loss": 0.49067,
+   "seconds": 45.1
+  },
+  "test": {
+   "sources": {
+    "arabic": 88.12,
+    "latin": 89.91
+   },
+   "types": {
+    "list": 87.1,
+    "text": 90.94
+   },
+   "fields": 31806,
+   "mean": 89.02,
+   "null": {
+    "precision": 0.9792,
+    "recall": 0.9455
+   },
+   "fields_score": {
+    "first_name": 72.86,
+    "last_name": 89.76,
+    "middle_names": 68.9,
+    "titles": 96.66,
+    "extra_info": 95.75,
+    "life_start": 99.03,
+    "life_end": 97.73,
+    "flourished_start": 91.65,
+    "flourished_end": 94.65
+   },
+   "field_mean": 89.66,
+   "record_exact": 24.34,
+   "rows": 3534,
+   "loss": 0.50214,
+   "seconds": 147.3
+  }
+ },
+ "tuned": {
+  "best_step": 317,
+  "dev": {
+   "sources": {
+    "arabic": 99.83,
+    "latin": 99.82
+   },
+   "types": {
+    "list": 99.73,
+    "text": 99.87
+   },
+   "fields": 9000,
+   "mean": 99.82,
+   "null": {
+    "precision": 0.9994,
+    "recall": 0.9996
+   },
+   "fields_score": {
+    "first_name": 99.55,
+    "last_name": 99.65,
+    "middle_names": 99.58,
+    "titles": 99.8,
+    "extra_info": 99.8,
+    "life_start": 100.0,
+    "life_end": 100.0,
+    "flourished_start": 100.0,
+    "flourished_end": 100.0
+   },
+   "field_mean": 99.82,
+   "record_exact": 97.3,
+   "rows": 1000,
+   "loss": 0.01222,
+   "seconds": 41.3
+  },
+  "test": {
+   "sources": {
+    "arabic": 99.93,
+    "latin": 99.94
+   },
+   "types": {
+    "list": 99.88,
+    "text": 99.97
+   },
+   "fields": 31806,
+   "mean": 99.94,
+   "null": {
+    "precision": 0.9999,
+    "recall": 0.9999
+   },
+   "fields_score": {
+    "first_name": 99.91,
+    "last_name": 99.89,
+    "middle_names": 99.71,
+    "titles": 99.97,
+    "extra_info": 99.94,
+    "life_start": 100.0,
+    "life_end": 100.0,
+    "flourished_start": 100.0,
+    "flourished_end": 100.0
+   },
+   "field_mean": 99.94,
+   "record_exact": 97.34,
+   "rows": 3534,
+   "loss": 0.00277,
+   "seconds": 146.8
+  }
+ },
+ "steps": 317,
+ "train_names": 60000,
+ "args": {
+  "out": "runs/names-60k",
+  "model": "models/turion-extract-alpha",
+  "base": null,
+  "init": "adapter",
+  "data": "data/names",
+  "train_examples": 60000,
+  "dev_examples": 1000,
+  "test_examples": 0,
+  "epochs": 1,
+  "max_steps": 0,
+  "lr": 0.0001,
+  "head_lr": 0.001,
+  "warmup": 30,
+  "schedule": "linear",
+  "weight_decay": 0.0,
+  "grad_clip": 1.0,
+  "tokens_per_step": 32768,
+  "micro_tokens": 16384,
+  "eval_micro_tokens": 32768,
+  "max_len": 1024,
+  "eval_every": 50,
+  "save_every": 100,
+  "log_every": 5,
+  "no_grad_ckpt": false,
+  "no_zero_shot": false,
+  "seed": 0,
+  "device": null
+ }
+}

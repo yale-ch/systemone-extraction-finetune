@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+# Drive the Bouchet side from the laptop over ssh to bouchet.ycrc.yale.edu (set NAMES_HOST to use an ssh alias).
+# All ssh/rsync calls share one connection: Duo asks once, then not again for 8 hours. If ssh needs a password or
+# Duo, the first command prompts for it; `bin/bouchet login` does just that step.
+#
+#   bin/bouchet login                      open the shared connection (password/Duo once)
+#   bin/bouchet logout                     close it
+#   bin/bouchet sync [--dry-run]           copy code to the cluster (.env is not sent; runs, data, models,
+#                                          .venv, hf_cache and env.local.sh there are untouched);
+#                                          --dry-run lists what would be sent or deleted, and changes nothing
+#   bin/bouchet push-model                 copy models/turion-extract-alpha (adapter, heads, tokenizer, code; ~670 MB)
+#   bin/bouchet setup                      sync, then build .venv with pip on a compute node (srun; bouchet/setup-job.sh)
+#   bin/bouchet setup-login                the same on the login node (pip was killed there once)
+#   bin/bouchet requirements               regenerate requirements-cluster.txt from uv.lock (here; after changing deps)
+#   bin/bouchet push-data                  prepare data/names here if needed, copy it up
+#   bin/bouchet fetch-base [MODEL]         download a base model into the shared HF cache (login node);
+#                                          default google/gemma-4-12B-it, e.g. fetch-base Qwen/Qwen3.5-4B
+#   bin/bouchet test                       run the CPU tests on the login node
+#   bin/bouchet submit RUN [sbatch opts] [-- train args]
+#                                          e.g. submit names-60k   |   submit names-all --time=24:00:00 -- --train-examples 0
+#   bin/bouchet status [RUN]               your queue (+ the tail of RUN's log)
+#   bin/bouchet pull RUN                   metrics, logs, test predictions (not weights) into runs/RUN
+#   bin/bouchet pull-model RUN             also runs/RUN/best (the fine-tuned model directory, ~640 MB)
+#   bin/bouchet run CMD...                 run a command in the repo on the login node
+#
+# Your settings (user, Slurm account, cluster paths) are not in this repo. Put them in .env (git-ignored and never
+# synced; copy .env.example) or export them; a variable already set in the shell wins over .env.
+#   NAMES_REMOTE   required: the project directory on the cluster (code, .venv, data, runs)
+#   NAMES_ACCOUNT  Slurm account for jobs and setup (default: your Slurm default account)
+#   NAMES_HOST     ssh host or alias (default bouchet.ycrc.yale.edu, as your local user)
+#   NAMES_HF_HOME, NAMES_SETUP_PARTITION, NAMES_SETUP_MEM, NAMES_PYTHON   passed on to bouchet/env.sh and setup
+set -euo pipefail
+HERE=$(cd "$(dirname "$0")/.." && pwd)
+if [ -f "$HERE/.env" ]; then                      # plain NAME=value lines (no quotes); only NAMES_* settings
+  while IFS= read -r line || [ -n "$line" ]; do
+    line=${line#export }
+    case $line in ''|'#'*) continue ;; esac
+    k=${line%%=*}
+    case $k in NAMES_*) ;; *) echo "bin/bouchet: .env: ignoring '$k' (only NAMES_* settings)" >&2; continue ;; esac
+    [ -n "${!k+x}" ] || export "$k=${line#*=}"
+  done < "$HERE/.env"
+fi
+HOST=${NAMES_HOST:-bouchet.ycrc.yale.edu}
+SSH_OPTS="-o ControlMaster=auto -o ControlPath=$HOME/.ssh/cm-%C -o ControlPersist=8h -o ServerAliveInterval=60"
+ssh() { command ssh $SSH_OPTS "$@"; }
+export RSYNC_RSH="ssh $SSH_OPTS"                  # rsync uses the same shared connection
+REMOTE=${NAMES_REMOTE:-}                          # where the code, .venv, data and runs live
+FORWARD="NAMES_ACCOUNT NAMES_HF_HOME NAMES_SETUP_PARTITION NAMES_SETUP_MEM NAMES_PYTHON"
+fwd() { local k out=; for k in $FORWARD; do [ -z "${!k:-}" ] || out+="export $k=$(printf '%q' "${!k}"); "; done; echo "$out"; }
+r() { ssh "$HOST" "$(fwd)cd $REMOTE && source bouchet/env.sh && $*"; }
+q() { local out=() a; for a in "$@"; do out+=("$(printf '%q' "$a")"); done; echo "${out[*]-}"; }
+
+cmd=${1:-help}; shift || true
+case "$cmd" in
+  login|logout|requirements|help|-h|--help) ;;
+  *) [ -n "$REMOTE" ] || { echo "bin/bouchet: set NAMES_REMOTE (the project directory on the cluster) in .env or the environment; see .env.example" >&2; exit 1; } ;;
+esac
+case "$cmd" in
+  login)
+    ssh "$HOST" 'echo "connected to $(hostname) as $USER"' ;;
+  logout)
+    ssh -O exit "$HOST" ;;
+  sync)
+    dry=; [ "${1:-}" = "--dry-run" ] && dry=-nv
+    echo "sync: $HERE -> $HOST:$REMOTE${dry:+ (dry run: nothing is changed)}"
+    [ -n "$dry" ] || ssh "$HOST" "mkdir -p $REMOTE"
+    rsync -az $dry --delete --exclude /.git --exclude /.venv --exclude /runs --exclude /data --exclude /models \
+      --exclude /.env --exclude /hf_cache --exclude '__pycache__' --exclude '.pytest_cache' --exclude 'bouchet/env.local.sh' \
+      "$HERE/" "$HOST:$REMOTE/" ;;
+  push-model)
+    ssh "$HOST" "mkdir -p $REMOTE/models/turion-extract-alpha"
+    rsync -azL --progress --exclude .cache --exclude __pycache__ --exclude build --exclude '*.egg-info' \
+      "$HERE/models/turion-extract-alpha/" "$HOST:$REMOTE/models/turion-extract-alpha/" ;;
+  setup)
+    "$0" sync
+    r "bash bouchet/setup-job.sh" ;;
+  setup-login)
+    "$0" sync
+    r "bash bouchet/setup.sh" ;;
+  requirements)
+    cd "$HERE"
+    { sed -n '1,3p' requirements-cluster.txt
+      uv export --frozen --format requirements-txt --no-hashes --no-header --no-annotate --no-emit-project; } > requirements-cluster.txt.new
+    mv requirements-cluster.txt.new requirements-cluster.txt
+    echo "requirements-cluster.txt: $(grep -c '==' requirements-cluster.txt) pinned packages" ;;
+  push-data)
+    [ -f "$HERE/data/names/train.jsonl" ] || (cd "$HERE" && uv run python -m names_ft.prepare)
+    ssh "$HOST" "mkdir -p $REMOTE/data"
+    rsync -az "$HERE/data/names" "$HOST:$REMOTE/data/" ;;
+  fetch-base)
+    r ".venv/bin/hf download $(q "${1:-google/gemma-4-12B-it}") --exclude 'original/*'" ;;
+  test)
+    "$0" sync
+    r ".venv/bin/python -m pytest -q tests" ;;
+  submit)
+    run=${1:?usage: bin/bouchet submit RUN [sbatch opts] [-- train args]}; shift
+    sb=(); while [ $# -gt 0 ] && [ "$1" != "--" ]; do sb+=("$1"); shift; done
+    [ "${1:-}" = "--" ] && shift
+    "$0" sync
+    r "mkdir -p runs/$run && sbatch --parsable \${NAMES_ACCOUNT:+--account=\"\$NAMES_ACCOUNT\"} --job-name=$run --output=runs/$run/slurm-%j.out $(q "${sb[@]+"${sb[@]}"}") bouchet/train.sbatch $run $(q "$@")" ;;
+  status)
+    ssh "$HOST" "squeue -u \$USER -o '%.10i %.12P %.30j %.2t %.10M %.10L %R'" </dev/null
+    if [ $# -gt 0 ]; then
+      # pending: Slurm's start estimate; started: the tail of the newest log (never a bare `tail`, which waits on stdin)
+      r "squeue -h -u \$USER -n $1 -t PD --start -o 'pending %i: estimated start %S (%R)'
+         f=\$(ls -t runs/$1/slurm-*.out 2>/dev/null | head -1)
+         if [ -n \"\$f\" ]; then echo \"== \$f\"; tail -n 15 \"\$f\"; else echo 'no log yet for $1'; fi" </dev/null
+    fi ;;
+  pull)
+    mkdir -p "$HERE/runs/$1"
+    rsync -az --exclude 'best/' --exclude 'last/' --exclude '*.safetensors' --exclude '*.pt' "$HOST:$REMOTE/runs/$1/" "$HERE/runs/$1/" ;;
+  pull-model)
+    "$0" pull "$1"
+    rsync -az --progress "$HOST:$REMOTE/runs/$1/best" "$HERE/runs/$1/" ;;
+  run)
+    r "$*" ;;
+  *) awk 'NR > 1 && !/^#/ {exit} NR > 1 {print}' "$0" ;;
+esac
