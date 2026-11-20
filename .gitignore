@@ -1,0 +1,65 @@
+# What must not be shared, and why: REPRODUCING.md, section 5.
+
+# --- Secrets and personal settings ---------------------------------------------------------------------------------
+# NetID-bearing cluster path and Slurm account (template: .env.example, which is shared)
+.env
+.env.*
+!.env.example
+# per-user overrides on the cluster
+bouchet/env.local.sh
+*.local.sh
+# keys, tokens and credentials, should any ever land here
+*.pem
+*.key
+*.p12
+id_rsa*
+id_ed25519*
+.netrc
+.ssh/
+token
+*.token
+credentials*.json
+secrets*.json
+.claude/settings.local.json
+
+# --- Data: derived from a dataset with no declared licence; rebuild with names_ft.prepare (checksums in REPRODUCING.md)
+data/
+*.parquet
+
+# --- Models: downloaded from the Hub or published separately as model repos ------------------------------------------
+# models/turion-extract-alpha is a symlink to a local copy of turion-ai/turion-extract-alpha
+models/
+hf_cache/
+*.safetensors
+*.pt
+*.pth
+*.bin
+*.gguf
+*.npz
+
+# --- Run outputs ---------------------------------------------------------------------------------------------------
+# Kept: metrics.json and train-log.jsonl (scores, losses, arguments; no identifiers).
+# Ignored: best/ and last/ (weights), predictions-test.jsonl (dataset text), slurm-*.out (NetID paths, node hostnames).
+runs/*/*
+!runs/*/metrics.json
+!runs/*/train-log.jsonl
+slurm-*.out
+
+# --- Environments, caches and build artifacts (machine-specific, absolute local paths) -------------------------------
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+.ipynb_checkpoints/
+wandb/
+
+# --- OS and editor files -------------------------------------------------------------------------------------------
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~

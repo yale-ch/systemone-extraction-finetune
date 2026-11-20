@@ -1,0 +1,40 @@
+[project]
+name = "turion-names"
+version = "0.1.0"
+description = "Fine-tune Turion Extract alpha to parse personal names into typed fields"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "torch>=2.8",
+    "transformers>=5.5",
+    "peft>=0.21",
+    "safetensors",
+    "numpy",
+    "pyyaml",
+    "pyarrow",
+    "huggingface_hub",
+    "turion-extract",
+    "flash-linear-attention>=0.6 ; sys_platform == 'linux'",
+]
+
+[dependency-groups]
+dev = ["pytest"]
+mlx = [
+    "mlx>=0.32.4 ; sys_platform == 'darwin'",
+    "mlx-lm>=0.32.2 ; sys_platform == 'darwin'",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+# models/turion-extract-alpha is the released model directory (a symlink on the laptop, a copy on Bouchet)
+turion-extract = { path = "models/turion-extract-alpha/code", editable = true }
+torch = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.pytest.ini_options]
+pythonpath = ["."]                  # names_ft is not installed (package = false)

@@ -1,0 +1,100 @@
+{
+ "tuned": {
+  "best_step": 1704,
+  "dev": {
+   "sources": {
+    "arabic": 99.84,
+    "latin": 99.94
+   },
+   "types": {
+    "list": 99.96,
+    "text": 99.91
+   },
+   "fields": 9000,
+   "mean": 99.89,
+   "null": {
+    "precision": 0.9998,
+    "recall": 1.0
+   },
+   "fields_score": {
+    "first_name": 99.7,
+    "last_name": 99.77,
+    "middle_names": 99.99,
+    "titles": 100.0,
+    "extra_info": 99.9,
+    "life_start": 100.0,
+    "life_end": 100.0,
+    "flourished_start": 100.0,
+    "flourished_end": 100.0
+   },
+   "field_mean": 99.93,
+   "record_exact": 99.6,
+   "rows": 1000,
+   "loss": 0.00331,
+   "seconds": 16.9
+  },
+  "test": {
+   "sources": {
+    "arabic": 100.0,
+    "latin": 99.99
+   },
+   "types": {
+    "list": 99.98,
+    "text": 99.99
+   },
+   "fields": 31806,
+   "mean": 100.0,
+   "null": {
+    "precision": 1.0,
+    "recall": 1.0
+   },
+   "fields_score": {
+    "first_name": 99.97,
+    "last_name": 99.97,
+    "middle_names": 99.95,
+    "titles": 100.0,
+    "extra_info": 100.0,
+    "life_start": 100.0,
+    "life_end": 100.0,
+    "flourished_start": 100.0,
+    "flourished_end": 100.0
+   },
+   "field_mean": 99.99,
+   "record_exact": 99.8,
+   "rows": 3534,
+   "loss": 0.00032,
+   "seconds": 76.4
+  }
+ },
+ "steps": 1704,
+ "train_names": 342700,
+ "args": {
+  "out": "runs/names-qwen-all",
+  "model": "models/turion-extract-alpha",
+  "base": "Qwen/Qwen3.5-4B",
+  "init": "fresh",
+  "data": "data/names",
+  "train_examples": 0,
+  "dev_examples": 1000,
+  "test_examples": 0,
+  "epochs": 1,
+  "max_steps": 0,
+  "lr": 0.0001,
+  "head_lr": 0.001,
+  "warmup": 30,
+  "schedule": "linear",
+  "weight_decay": 0.0,
+  "grad_clip": 1.0,
+  "tokens_per_step": 32768,
+  "micro_tokens": 16384,
+  "eval_micro_tokens": 32768,
+  "max_len": 1024,
+  "eval_every": 200,
+  "save_every": 200,
+  "log_every": 5,
+  "no_grad_ckpt": false,
+  "no_zero_shot": false,
+  "seed": 0,
+  "device": null
+ }
+}
